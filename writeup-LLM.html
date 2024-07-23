@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.52">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2024-07-23">
+
+<title>A Computational Analysis of Hate Speech Across Reddit - Large Language Models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="writeup-LLM_files/libs/clipboard/clipboard.min.js"></script>
+<script src="writeup-LLM_files/libs/quarto-html/quarto.js"></script>
+<script src="writeup-LLM_files/libs/quarto-html/popper.min.js"></script>
+<script src="writeup-LLM_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="writeup-LLM_files/libs/quarto-html/anchor.min.js"></script>
+<link href="writeup-LLM_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="writeup-LLM_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="writeup-LLM_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="writeup-LLM_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="writeup-LLM_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">A Computational Analysis of Hate Speech Across Reddit - Large Language Models</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Python</div>
+    <div class="quarto-category">ML</div>
+    <div class="quarto-category">NLP</div>
+    <div class="quarto-category">LLM</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">July 23, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>The internet has become a breeding ground for various ideologies, some of which propagate harmful narratives and hate speech. One such community that has gained notoriety in the past decade is the “incel” (involuntary celibate) movement, known for its misogynistic rhetoric and, in some cases, calls for violence against women. The banning of the r/Incels subreddit in 2017 marked a significant moment in Reddit’s content moderation efforts, but it also led to the dispersion of this community across other platforms and other subreddits.</p>
+<p>This project aims to leverage the power of Natural Language Processing (NLP) and Machine Learning (ML) techniques to track the evolution of incel-related hate speech and sentiment on Reddit. By focusing on the banned r/Incels subreddit and its subsequent offshoots, we seek to understand how misogynistic language persists and evolves in online spaces, even after community bans.</p>
+<p>Back in 2021 I conducted some analysis of this data. As you will see below, I leveraged Spark to ingest, and process Reddit posts, taking advantage of the then-free access to Reddit’s API. I then trained Large Language Models (LLMs) to classify the r/Incels subreddit posts, and applied this model to offshoots of this community post-ban, yielding interesting results.</p>
+<p>With advancements in the NLP field, I wanted to revisit this 2021 project using some sentiment analysis techniques. This analysis can be found in a different notebook here.</p>
+<p>I will, unfortunately, be using a much smaller dataset (only a small subset of the data I saved back in 2021) due to Reddits current API limitations. Hopefully, one day when I have a little time on my hands, I can get the data I need to from the Pushshift data dumps containing all historical reddit posts.</p>
+</section>
+<section id="using-large-language-models-for-incel-subreddit-classification" class="level1">
+<h1>Using Large Language Models for Incel Subreddit Classification</h1>
+<p>Large language models (LLMs) are advanced AI systems trained on vast amounts of text data to understand and generate human-like language. LLMs can perform a wide range of language tasks, and can understand context and nuance in language. Fine-tuning can be done on specific datasets to adapt the model for particular tasks or domains.</p>
+<p>In 2021 I used LLMs to classify posts as either originating from the r/Incels subreddit or from another subreddit. The primary objective was <strong>not</strong> to create a perfect classification model but to investigate whether the linguistic patterns and themes characteristic of incel rhetoric could be detected in posts from other subreddits.</p>
+<p>I will dive into my code, and findings here!</p>
+<section id="data-cleaning" class="level2">
+<h2 class="anchored" data-anchor-id="data-cleaning">Data Cleaning</h2>
+<p>The first step (at the time) was to use Reddit’s Pushshift API to gather all r/incel historical posts. Using spark, I read in the data with the following code, and began to clean it:</p>
+<div id="ff6afc97" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> findspark</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>findspark.init()</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sparknlp.annotator <span class="im">import</span> <span class="op">*</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sparknlp.base <span class="im">import</span> <span class="op">*</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sparknlp</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pyspark <span class="im">import</span> SparkContext, SparkConf</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pyspark.sql <span class="im">import</span> SQLContext, SparkSession</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pyspark.sql.functions <span class="im">import</span> udf, col</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pyspark.sql.functions <span class="im">as</span> F</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pyspark.sql.types <span class="im">import</span> IntegerType, StringType</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pyspark.ml <span class="im">import</span> Pipeline</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sparknlp.pretrained <span class="im">import</span> PretrainedPipeline</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> glob</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.metrics <span class="im">import</span> classification_report, accuracy_score</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.model_selection <span class="im">import</span> train_test_split</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Initialize Spark</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>sparknlp.start()</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>conf <span class="op">=</span> SparkConf().setAppName(<span class="st">'subreddit-classification'</span>)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>sc <span class="op">=</span> SparkContext.getOrCreate()</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>spark <span class="op">=</span> SQLContext(sc)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean the data</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df.withColumnRenamed(<span class="st">'selftext'</span>, <span class="st">'text'</span>)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df.select(<span class="st">'subreddit'</span>, <span class="st">'title'</span>)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df.<span class="bu">filter</span>(df.title <span class="op">!=</span> <span class="st">'[deleted]'</span>)<span class="op">\</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>               .<span class="bu">filter</span>(df.title <span class="op">!=</span> <span class="st">'[removed]'</span>)<span class="op">\</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>               .<span class="bu">filter</span>(df.title <span class="op">!=</span> <span class="st">''</span>)</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co"># Label the data 1 if from r/incel and 0 if not</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>df_incel <span class="op">=</span> df.withColumn(</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>    <span class="st">'label'</span>,</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>    F.when((F.col(<span class="st">"subreddit"</span>) <span class="op">==</span> <span class="st">'Incels'</span>) , <span class="st">'1'</span>)<span class="op">\</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    .otherwise(<span class="st">'0'</span>)</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="training-llms-with-sparknlp" class="level2">
+<h2 class="anchored" data-anchor-id="training-llms-with-sparknlp">Training LLMs with SparkNLP</h2>
+<p>I used SparkNLP to train two LLMs, one trained using submission titles, and another using submission post text. Submission post text provides us with the benefit of a lot more context and words than a title, however not all submissions contain usable post text.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="img/pipeline.jpg" class="img-fluid figure-img" width="534"></p>
+<figcaption>SparkNLP pipeline for subreddit classificaiton</figcaption>
+</figure>
+</div>
+<p>As seen in the pipeline graphic above and code below, I initialized the Document Assembler, Universal Sentence Encode, and Classifier DL for my LLM pipeline.</p>
+<div id="0563b46d" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># SparkNLP Pipeline</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>document <span class="op">=</span> DocumentAssembler()<span class="op">\</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    .setInputCol(<span class="st">"title"</span>)<span class="op">\</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    .setOutputCol(<span class="st">"document"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Document Done"</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>use <span class="op">=</span> UniversalSentenceEncoder.pretrained()<span class="op">\</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a> .setInputCols([<span class="st">"document"</span>])<span class="op">\</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a> .setOutputCol(<span class="st">"sentence_embeddings"</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Use Done"</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>classsifierdl <span class="op">=</span> ClassifierDLApproach().setInputCols([<span class="st">"sentence_embeddings"</span>])<span class="op">\</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    .setOutputCol(<span class="st">"class"</span>)<span class="op">\</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    .setLabelColumn(<span class="st">"label"</span>)<span class="op">\</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    .setMaxEpochs(<span class="dv">10</span>)<span class="op">\</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    .setEnableOutputLogs(<span class="va">True</span>)<span class="op">\</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    .setLr(<span class="fl">0.004</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Classifierd Done"</span>)</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>nlpPipeline <span class="op">=</span> Pipeline(       </span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    stages <span class="op">=</span> [</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>        document,</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        use,</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        classsifierdl</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    ])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="img/trained_table.jpg" class="img-fluid figure-img" width="498"></p>
+<figcaption>Model Stats for two models: one trained using submission titles, and one using submission post text</figcaption>
+</figure>
+</div>
+<p>The next step was to split the data into testing and training sets, and train the model. Performing this once using submission titles and again using submission post text I found that the posts model was slightly more accurate. The training data and accuracy, precision, and recall for both models can be seen in the table above.</p>
+<p>While the accuracy is slightly better for the model trained on post text, the number of submissions the model was trained on was significantly lower (10,000 submissions vs.&nbsp;2,000). This is because, after the cleaning process for the post text model, only 2,000 submissions remained. The implication is that this model, while it performs better, is less applicable as it cannot be used on 80% of the submissions. Therefore, going forward, I recommend using the model trained on submission titles.</p>
+<p>Below is the code to train the title model:</p>
+<div id="edae2a06" class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Split into test and training set</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>(train_set, test_set)<span class="op">=</span> df_incel.randomSplit([<span class="fl">0.8</span>, <span class="fl">0.2</span>], seed<span class="op">=</span><span class="dv">100</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Train the model</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>model_incel <span class="op">=</span> nlpPipeline.fit(train_set)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Predict Testing Data</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>df_incel<span class="op">=</span> model_incel.transform(test_set).select(<span class="st">"subreddit"</span>, <span class="st">"title"</span>,<span class="st">"label"</span>, <span class="st">"document"</span>, <span class="st">"class.result"</span>).toPandas()</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>df_incel[<span class="st">"result"</span>] <span class="op">=</span> df_incel[<span class="st">"result"</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x:x[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<p>The LLMs performed well, providing valuable insights into the incel subcommunity on Reddit.</p>
+<section id="model-interpretation" class="level3">
+<h3 class="anchored" data-anchor-id="model-interpretation">Model Interpretation</h3>
+<p>NLP allows us to examine how the model interprets textual data. While the submission title model is recommended, individual posts offer more information. Let’s analyze some incorrectly classified posts to understand our model and the language used (as shown in the mock confusion matrix table below).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="img/confusion_matrix_ex.jpg" class="img-fluid figure-img"></p>
+<figcaption>Example of incorrectly classified posts</figcaption>
+</figure>
+</div>
+<p>The top right quadrant shows posts misclassified as r/Incel:</p>
+<ul>
+<li>From r/xxfitness: “Zyzz da best sigma male.” The model likely flagged the term “sigma male,” which is a common term in the incel vocabulary. This is valuable as, depending on frequency and tone of useage (ironic vs.&nbsp;serious) we can detect overlap in communities and/or identify at risk individuals that may benefit from early intervention prevention strategies.</li>
+<li>From r/Jokes: “Since he was conceived on it, it’s not really a pull out couch.” This misclassification suggests the incel subreddit contains significant sexual content and language.</li>
+</ul>
+<p>The bottom left quadrant displays a post from the r/Incels subreddit that was not found by the model. It starts off by listing some quotes, “Have a great day,” “Cheers,” “Please seek help.” The post then goes on to say “Obviously there are many more, these are the ones they use to be condescendingly polite, with varying degrees of self awareness about the condescending part.” We can infer that the redditor is talking phrases that upset him as he believes they are said with condescending and disingenuous intentions. This is further evident by his clarifications that adding a smiley face to best wishes and (someone he has romantic feelings for) calling him mate makes the remark more painful.</p>
+<p>It is interesting to hypothesis why the model missed this post, it could be that it saw the smiley faces, and all the best wishes and did not understand the context or sentiment the user had towards these phrases. It could also be that this post did not register because it is “more tame” than a majority of other posts which contain hateful and violent messaging. Some examples of post titles were: “reasons why women are the embodiment of evil,” and “proof that girls are nothing but trash that use men.” This misclassification highlights the prevalence of extreme misogyny in the subreddit and suggests a potential method for early intervention by identifying less radicalized individuals within hate groups.</p>
+</section>
+<section id="model-application" class="level3">
+<h3 class="anchored" data-anchor-id="model-application">Model Application</h3>
+<p>I applied the model to random subreddits and specific subreddits with known incel ideology connections.</p>
+<section id="incel-related-offshoots" class="level4">
+<h4 class="anchored" data-anchor-id="incel-related-offshoots">Incel Related Offshoots</h4>
+<p>I looked at three specific subreddits associated with the incel community that were also banned for hatespeech: r/Braincels (banned 2019), r/shortcels (banned 2020), and r/TruFemcels (banned 2020).</p>
+<div id="82ff07a9" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Read in json files for braincels, shortcels, and trufemcels</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>tests <span class="op">=</span> spark.read.json(<span class="st">"tests/*.json"</span>, multiLine<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean data</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>tests <span class="op">=</span> tests.withColumnRenamed(<span class="st">'selftext'</span>, <span class="st">'text'</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>tests <span class="op">=</span> tests.select(<span class="st">'subreddit'</span>, <span class="st">'title'</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>tests <span class="op">=</span> tests.<span class="bu">filter</span>(tests.title <span class="op">!=</span> <span class="st">'[deleted]'</span>)<span class="op">\</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>               .<span class="bu">filter</span>(tests.title <span class="op">!=</span> <span class="st">'[removed]'</span>)<span class="op">\</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>               .<span class="bu">filter</span>(tests.title <span class="op">!=</span> <span class="st">''</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>               </span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Make predictions</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>df_tests<span class="op">=</span> model_incel.transform(tests).select(<span class="st">"subreddit"</span>, <span class="st">"title"</span>, <span class="st">"class.result"</span>).toPandas()</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>df_tests[<span class="st">"result"</span>] <span class="op">=</span> df_tests[<span class="st">"result"</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x:x[<span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Subreddit</th>
+<th>Percent Classified as r/Incel</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>r/Braincels</td>
+<td>65.2%</td>
+</tr>
+<tr class="even">
+<td>r/Shortcels</td>
+<td>60.2%</td>
+</tr>
+<tr class="odd">
+<td>r/truFemcels</td>
+<td>68.6%</td>
+</tr>
+<tr class="even">
+<td>r/Cooking <em>(just for reference)</em></td>
+<td>&lt;1%</td>
+</tr>
+</tbody>
+</table>
+<blockquote class="blockquote">
+<p>Note: I added an obviously non-controversial subreddit (r/Cooking) just for reference</p>
+</blockquote>
+<p>Key Observations:</p>
+<ul>
+<li>Classification rates decreased compared to the original r/Incels, despite these subreddits supporting incel ideology and banned for hatespeech. This could be due to improved moderation or evolving language.</li>
+<li>r/truFemcels, despite being a subreddit for women incels, scored highest. This suggests significant overlap in language and sentiment with r/Incels, raising questions about the nature of the detected language (for example, how much does the model look for language that is hateful and harmful but not gender specific, and how much is the truFemcels language actually misogynistic in nature).</li>
+</ul>
+</section>
+<section id="applying-on-random-subreddits" class="level4">
+<h4 class="anchored" data-anchor-id="applying-on-random-subreddits">Applying on Random Subreddits</h4>
+<p>Using the same code, I analyzed 5,000 random reddit submissions, and found the following:</p>
+<ol type="1">
+<li>About 11% were classified as r/Incels submissions.</li>
+<li>Most matches came from r/AskReddit, r/Sex, and r/relationship_advice.</li>
+<li>Approximately 20% of r/Sex titles were classified as r/Incel, suggesting highly sexual content in incel titles.</li>
+</ol>
+<p>A closer look at the actually titles and their classification could provide usefull insight into the model’s classification criteria.</p>
+</section>
+</section>
+</section>
+<section id="conclusion-and-future-work" class="level1">
+<h1>Conclusion and Future Work</h1>
+<p>This study leveraged LLMs to analyze and track the evolution of incel-related content on Reddit. My findings reveal the persistence and adaptability of incel rhetoric across different subreddits, even after the banning of the original r/Incels community. The model’s ability to identify incel-like content in seemingly unrelated subreddits highlights the pervasive nature of this ideology and the potential for its spread.</p>
+<p>Key insights include:</p>
+<ol type="1">
+<li>The effectiveness of LLMs in detecting incel-related content, with high accuracy rates on both submission titles and post text.</li>
+<li>The identification of incel-like language in unexpected places, such as fitness and joke-related subreddits, indicating potential areas for early intervention.</li>
+<li>The persistence of incel ideology in offshoot communities, albeit with slightly lower detection rates, suggesting possible evolution in language or improved/stricter moderation from Reddit.</li>
+<li>The surprising similarity between male and female incel communities in terms of language use provides insight into the overlap in the communities messages.</li>
+</ol>
+<p>These findings underscore the complexity of online hate speech and the challenges in moderating such content. They also demonstrate the potential of NLP techniques in understanding and addressing these issues.</p>
+<p><strong>Future Work</strong></p>
+<p>Natural Language Processing continues to offer exciting avenues for exploring human communication and online behavior. Building on this study, several directions for future research emerge:</p>
+<ul>
+<li>Temporal analysis: Train the model on a sliding window of data to better understand how incel language evolves over time.</li>
+<li>Sentiment analysis: Investigate the emotional undertones of incel-related content and track potential changes in sentiment over time.</li>
+<li>Error analysis: Conduct a deep dive into the model’s misclassifications to gain deeper insights into the nuances of incel content and its manifestations in various online communities.</li>
+<li>Cross-platform analysis: Extend the study to other social media platforms to compare and contrast the expression of incel ideology across different online environments.</li>
+<li>Intervention strategies: Develop and test AI-assisted intervention methods based on early detection of incel-like content.</li>
+</ul>
+<p>By continuing to refine and apply NLP techniques to these complex social issues, we can work towards creating safer and more inclusive online spaces. Thank you for engaging with this analysis of LLMs applied to incel-related content. For a complementary perspective on this data, please refer to our sentiment analysis study, which further explores the emotional landscape of these online communities.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

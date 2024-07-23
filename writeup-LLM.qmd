@@ -1,5 +1,5 @@
 ---
-title: A Computational Analysis of Hate Speech Across Reddit: Large Language Models
+title: A Computational Analysis of Hate Speech Across Reddit - Large Language Models
 output: github_document
 date: "2024-07-23"
 categories: [Python, ML, NLP, LLM]
