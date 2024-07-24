@@ -15,8 +15,6 @@ Back in 2021 I conducted some analysis of this data. As you will see below, I le
 
 With advancements in the NLP field, I wanted to revisit this 2021 project using some sentiment analysis techniques. This analysis can be found in a different notebook here. 
 
-I will, unfortunately, be using a much smaller dataset (only a small subset of the data I saved back in 2021) due to Reddits current API limitations. Hopefully, one day when I have a little time on my hands, I can get the data I need to from the Pushshift data dumps containing all historical reddit posts.
-
 # Using Large Language Models for Incel Subreddit Classification
 
 Large language models (LLMs) are advanced AI systems trained on vast amounts of text data to understand and generate human-like language. LLMs can perform a wide range of language tasks, and can understand context and nuance in language. Fine-tuning can be done on specific datasets to adapt the model for particular tasks or domains.
