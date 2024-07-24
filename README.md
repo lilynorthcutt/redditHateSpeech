@@ -3,8 +3,8 @@
 ## About this project
 This project uses Natural Language Processing (NLP) and Machine Learning (ML) techniques to detect, analyze, and track misogynistic hate speech in communities on Reddit. I focus on the banned "Incels" subreddit and its spin-offs subreddits, employing:
 
-- [Writeup](writeup-LLM.md) Subreddit classification through speech detection using Large Language Models
-- Sentiment analysis to gauge emotional trends and vector space analysis for visualizing linguistic patterns
+- Subreddit classification through speech detection using Large Language Models [[Writeup](writeup-LLM.md)]
+- Sentiment analysis to gauge emotional trends and vector space analysis for visualizing linguistic patterns [[Code](sentiment-vectorspace.ipynb)]
 
 
 ## Important Note
